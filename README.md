@@ -26,7 +26,7 @@ No dependencies. No `.env` file. No setup beyond cloning. Pure Node.js built-ins
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 The system follows a layered architecture where each component has a single responsibility, ensuring modularity and scalability.
 
@@ -38,51 +38,8 @@ The system follows a layered architecture where each component has a single resp
   <i>Figure: Layered architecture of the workflow execution engine</i>
 </p>
 
-### Tier-Based Execution Model
-
-The template's `executionOrder` defines which steps run in which order. Each entry in the array is a **tier** — a group of steps that can run simultaneously.
-
-```
-executionOrder: [
-  ['s1'],        ← Tier 1: s1 runs alone (s3 depends on its output)
-  ['s2', 's3']   ← Tier 2: s2 and s3 run in parallel
-]
-
-Execution timeline:
-
-  Tier 1:    [s1]──────────────────────────► done
-                                              │
-  Tier 2:    ┌──────────────────────────────► │
-             [s2] ────────────────────────┐   │
-             [s3] ────────────────────────┘   │
-                          ▼                   │
-                     Promise.all waits ──────►│
-                                              ▼
-                                         checkpoint
-                                              ▼
-                                       finalOutputs
-```
-
-Tiers are **sequential**. Steps within a tier are **parallel**. This is not a convenience — it is the engine's core contract. A step in tier 2 is guaranteed that all tier 1 outputs exist in `job.stepOutputs` before it executes.
-
-### Variable Resolution
-
-Steps reference prior outputs and user inputs using `{{...}}` placeholders. The executor resolves all four reference types before calling any provider:
-
-| Placeholder | Resolves to |
-|---|---|
-| `{{userUpload}}` | `job.inputFiles[0]` |
-| `{{userInputs.aspectRatio}}` | `job.userInputs['aspectRatio']` |
-| `{{steps.s1.heroShot}}` | `job.stepOutputs['s1']['heroShot']` |
-| `{{steps.s2.shots[1]}}` | `job.stepOutputs['s2']['shots'][1]` |
-
-If any placeholder resolves to `undefined`, the engine throws immediately with a descriptive error — it never silently passes bad data to a provider.
-
----
 
 ## Bug Fix Case Study
-
-The starter code contained three intentional bugs. Each one is documented below as it would appear in a real debugging post-mortem.
 
 ---
 
@@ -224,18 +181,4 @@ The resume logic is pure, stateless, and requires no additional configuration. T
 
 ---
 
-## File Structure
-
-```
-OCD/
-├── engine/
-│   ├── providers/
-│   │   └── mock.js          — Simulated async AI provider (adapter pattern)
-│   ├── stepExecutor.js      — Variable resolution + single/parallel dispatch
-│   └── workflowRunner.js    — Tier orchestration, checkpointing, crash recovery
-├── test/
-│   └── run.js               — Integration test with exact spec config
-├── package.json
-└── README.md
-```
 
